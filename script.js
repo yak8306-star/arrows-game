@@ -1,9 +1,22 @@
-// Инициализация VK Bridge
-vkBridge.send('VKWebAppInit').then((data) => {
-    console.log("VK Bridge инициализирован:", data);
-}).catch((error) => {
-    console.error("Ошибка при инициализации VK Bridge:", error);
+// Ждем загрузки всех ресурсов и VK Bridge
+window.addEventListener('load', () => {
+    if (typeof vkBridge !== 'undefined') {
+        vkBridge.send('VKWebAppInit').then(() => {
+            console.log("VK Bridge инициализирован");
+            runGame(); // Запускаем игру только после инициализации
+        }).catch(err => {
+            console.error("Ошибка VK Bridge:", err);
+            runGame(); // Запускаем игру даже если ошибка, чтобы она работала вне VK
+        });
+    } else {
+        runGame(); // Если мы не в VK, просто запускаем игру
+    }
 });
+
+function runGame() {
+    // ВСТАВЬ СЮДА ВЕСЬ СВОЙ ОСТАЛЬНОЙ КОД, начиная с "const board = ..." 
+    // и заканчивая "window.onload = initGame;" (эту строку можно убрать)
+  
 const board = document.getElementById('game-board');
 const boardWrapper = document.getElementById('game-board-wrapper');
 const livesDisplay = document.getElementById('lives-display');
@@ -421,3 +434,6 @@ zoomInBtn.addEventListener('click', () => { if(currentZoom < 1.6) { currentZoom 
 zoomOutBtn.addEventListener('click', () => { if(currentZoom > 0.3) { currentZoom -= 0.15; updateUI(); } });
 
 window.onload = () => { loadGameData(); initGame(false); };
+loadGameData();
+    initGame(false);
+}
