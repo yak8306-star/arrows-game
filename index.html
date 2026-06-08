@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Стрелочки: Очисти поле</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="top-bar">
+            <div class="top-row">
+                <div id="level-indicator">Уровень: <span id="level-val">1</span></div>
+                <div id="timer-bar">⏱️ <span id="timer-val">00:00</span></div>
+                <div id="coins-container">
+                    <div id="coins-display">
+                        <span class="css-coin">Ⓜ️</span> <span id="coins-val">100</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bottom-row">
+                <div id="lives-display">❤️❤️❤️</div>
+            </div>
+        </div>
+
+        <div id="game-board-wrapper">
+            <div id="game-board"></div>
+        </div>
+
+        <div class="zoom-controls">
+            <button id="zoom-in-btn">+</button>
+            <button id="zoom-out-btn">-</button>
+        </div>
+
+        <div id="boosters-bar">
+            <button id="hint-btn" class="booster-button"><span class="icon">💡</span><span id="hint-count" class="count">3</span></button>
+            <button id="bomb-btn" class="booster-button"><span class="icon">💣</span><span id="bomb-count" class="count">5</span></button>
+            <button id="magnet-btn" class="booster-button"><span class="icon">🧲</span><span id="magnet-count" class="count">3</span></button>
+        </div>
+    </div>
+
+    <div id="victory-screen" class="screen hidden">
+        <div class="screen-content">
+            <h2>🎉 Уровень пройден!</h2>
+            <div class="victory-reward"><span class="css-coin huge">Ⓜ️</span> +25</div>
+            <button id="next-level-btn">Дальше</button>
+        </div>
+    </div>
+
+    <div id="game-over-screen" class="screen hidden">
+        <div class="screen-content">
+            <h2>💥 Жизни закончились</h2>
+            <button id="restart-btn">Повторить</button>
+        </div>
+    </div>
+
+    <div id="shop-screen" class="screen hidden">
+        <div class="screen-content shop-card">
+            <div class="shop-header-row">
+                <h2 id="shop-title">Бустер</h2>
+                <button id="close-shop-btn" class="close-cross-btn">&times;</button>
+            </div>
+            <button id="buy-booster-btn" class="shop-btn">Купить за 500 Ⓜ️</button>
+            <button id="ad-booster-btn" class="shop-btn ad-btn">Реклама (+1)</button>
+        </div>
+    </div>
+
+    <div id="wallet-screen" class="screen hidden">
+        <div class="screen-content wallet-card">
+            <div class="shop-header-row">
+                <h2>Кошелек</h2>
+                <button id="close-wallet-btn" class="close-cross-btn">&times;</button>
+            </div>
+            <div class="wallet-balance-info">
+                <span class="balance-text">Ⓜ️ <span id="wallet-coins-val">100</span></span>
+                <p class="wallet-desc">Зарабатывайте монеты на уровнях или посмотрите рекламу</p>
+            </div>
+            <button id="get-ad-coins-btn" class="wallet-ad-btn">Получить +200 Ⓜ️</button>
+        </div>
+    </div>
+
+    <div id="error-screen" class="screen hidden">
+        <div class="screen-content error-content">
+            <h2>⚠️ Ой!</h2>
+            <p>Недостаточно монет для этой покупки.</p>
+            <button id="close-error-btn" class="error-btn">Понятно</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
