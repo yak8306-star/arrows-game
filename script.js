@@ -1,3 +1,9 @@
+// Инициализация VK Bridge
+vkBridge.send('VKWebAppInit').then((data) => {
+    console.log("VK Bridge инициализирован:", data);
+}).catch((error) => {
+    console.error("Ошибка при инициализации VK Bridge:", error);
+});
 const board = document.getElementById('game-board');
 const boardWrapper = document.getElementById('game-board-wrapper');
 const livesDisplay = document.getElementById('lives-display');
