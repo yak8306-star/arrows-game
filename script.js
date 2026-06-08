@@ -1,21 +1,29 @@
-// Ждем загрузки всех ресурсов и VK Bridge
+// Ждем загрузки всех ресурсов страницы
 window.addEventListener('load', () => {
+    // Безопасная инициализация VK Bridge
     if (typeof vkBridge !== 'undefined') {
-        vkBridge.send('VKWebAppInit').then(() => {
-            console.log("VK Bridge инициализирован");
-            runGame(); // Запускаем игру только после инициализации
-        }).catch(err => {
-            console.error("Ошибка VK Bridge:", err);
-            runGame(); // Запускаем игру даже если ошибка, чтобы она работала вне VK
-        });
+        vkBridge.send('VKWebAppInit')
+            .then(() => console.log("VK Bridge инициализирован"))
+            .catch(err => console.error("Ошибка VK Bridge:", err));
     } else {
-        runGame(); // Если мы не в VK, просто запускаем игру
+        console.log("VK Bridge недоступен, запускаем в режиме браузера");
     }
+
+    // Запускаем основной код игры
+    runGame();
 });
 
 function runGame() {
-    // ВСТАВЬ СЮДА ВЕСЬ СВОЙ ОСТАЛЬНОЙ КОД, начиная с "const board = ..." 
-    // и заканчивая "window.onload = initGame;" (эту строку можно убрать)
+    // ВСТАВЬТЕ СЮДА ВЕСЬ ВАШ ОСТАЛЬНОЙ КОД, 
+    // который начинался с 'const board = ...'
+    
+    // Например:
+    const board = document.getElementById('game-board');
+    // ... остальной ваш код ...
+    
+    // Не забудьте в конце вызвать функцию инициализации уровня
+    // initGame(false); 
+}
   
 const board = document.getElementById('game-board');
 const boardWrapper = document.getElementById('game-board-wrapper');
