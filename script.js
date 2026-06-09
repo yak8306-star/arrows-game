@@ -1,14 +1,13 @@
-// --- 1. БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ ---
 window.addEventListener('load', () => {
     if (typeof vkBridge !== 'undefined') {
         vkBridge.send('VKWebAppInit')
             .then(() => {
                 console.log("VK Bridge инициализирован");
-                runGame(); // Запускаем игру после успеха
+                runGame();
             })
             .catch(err => {
                 console.error("Ошибка VK Bridge:", err);
-                runGame(); // Запускаем даже при ошибке, чтобы игра работала
+                runGame();
             });
     } else {
         console.log("VK Bridge недоступен, запускаем в режиме браузера");
@@ -17,13 +16,10 @@ window.addEventListener('load', () => {
 });
 
 function runGame() {
-    // Эта функция вызывается только после того, как страница загружена
-    // и VK Bridge дал ответ.
     loadGameData();
     initGame(false);
 }
 
-// --- 2. ЭЛЕМЕНТЫ И ПЕРЕМЕННЫЕ ---
 const board = document.getElementById('game-board');
 const boardWrapper = document.getElementById('game-board-wrapper');
 const livesDisplay = document.getElementById('lives-display');
@@ -72,7 +68,6 @@ let currentZoom = 0.75;
 let levelStartTime;
 let timerInterval = null;
 let handInterval = null; 
-let currentFigureKey = null;
 
 let isDragging = false;
 let startX = 0;
@@ -90,14 +85,13 @@ const dirSymbols = ['▲', '▶', '▼', '◀'];
 
 const pixelArtTemplates = {
     duck: [[0, 2, 2, 2, 0], [2, 2, 5, 2, 0], [0, 2, 2, 2, 2], [2, 2, 2, 2, 2], [0, 2, 2, 2, 0], [0, 1, 0, 1, 0]],
-    heart: [[0, 1, 1, 0, 1, 1, 0], [1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 0], [0, 0, 1, 1, 1, 0, 0], [0, 0, 0, 1, 0, 0, 0]],
     house: [[0, 0, 1, 0, 0], [0, 1, 1, 1, 0], [1, 1, 1, 1, 1], [0, 3, 3, 3, 0], [0, 3, 2, 3, 0], [0, 3, 3, 3, 0]],
+    heart: [[0, 1, 1, 0, 1, 1, 0], [1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 0], [0, 0, 1, 1, 1, 0, 0], [0, 0, 0, 1, 0, 0, 0]],
     smiley: [[0, 2, 2, 2, 0], [2, 5, 2, 5, 2], [2, 2, 2, 2, 2], [2, 1, 1, 1, 2], [0, 2, 2, 2, 0]]
 };
 
-let figuresPool = [];
-
-// --- 3. ФУНКЦИИ И ЛОГИКА ИГРЫ ---
+// Жесткая привязка фигур к порядку уровней (после туториала)
+const levelSequence = ['duck', 'house', 'heart', 'smiley'];
 
 function saveGameData() {
     localStorage.setItem('arrows_game_save', JSON.stringify({ level: currentLevel, coins: coins, boosters: boosters }));
@@ -111,11 +105,6 @@ function loadGameData() {
         coins = parsed.coins !== undefined ? parsed.coins : 100;
         boosters = parsed.boosters || { hint: 3, bomb: 5, magnet: 3 };
     }
-}
-
-function refillPool() {
-    figuresPool = Object.keys(pixelArtTemplates);
-    figuresPool.sort(() => Math.random() - 0.5);
 }
 
 function initGame(isRestart = false) {
@@ -140,15 +129,10 @@ function initGame(isRestart = false) {
 
     if (currentLevel === 1) {
         tutorialActive = true;
-        currentFigureKey = null;
         generateTutorialLevel();
     } else {
         tutorialActive = false;
-        if (!isRestart || !currentFigureKey) {
-            if (figuresPool.length === 0) refillPool();
-            currentFigureKey = figuresPool.pop();
-        }
-        generateLevelWithDifficulty(currentFigureKey, currentLevel);
+        generateLevelClean(currentLevel);
     }
     updateUI();
 }
@@ -221,35 +205,51 @@ function createTutorialHand() {
 
 function removeTutorialHand() { stopHandAnimation(); const hand = document.getElementById('tutorial-hand'); if (hand) hand.remove(); }
 
-function generateLevelWithDifficulty(figureKey, level) {
+// НОВАЯ ГЕНЕРАЦИЯ БЕЗ РАНДОМНОГО МУСОРА
+function generateLevelClean(level) {
     board.innerHTML = '';
     tilesData = [];
+    
+    // Определяем фигуру по уровню (уровень 2 = индекс 0, и т.д.)
+    let shapeIndex = (level - 2) % levelSequence.length;
+    let figureKey = levelSequence[shapeIndex];
     let baseMatrix = pixelArtTemplates[figureKey];
-    if (level >= 3) {
-        let extraRows = Math.min(Math.floor((level - 3) / 2), 3);
-        let extraCols = Math.min(Math.floor((level - 3) / 2), 3);
-        let newMatrix = [];
-        for(let r=0; r < baseMatrix.length + extraRows; r++) {
-            let row = [];
-            for(let c=0; c < baseMatrix[0].length + extraCols; c++) {
-                if (r < baseMatrix.length && c < baseMatrix[0].length) row.push(baseMatrix[r][c]);
-                else row.push((Math.random() > 0.6) ? Math.floor(Math.random() * 5) + 1 : 0);
+    
+    // Определяем множитель размера (каждые 4 уровня фигура увеличивается)
+    let scaleMultiplier = Math.floor((level - 2) / levelSequence.length) + 1;
+    let scaledMatrix = [];
+
+    // Масштабируем матрицу, чтобы форма сохранилась, но стрелочек стало больше
+    for (let r = 0; r < baseMatrix.length; r++) {
+        for (let sr = 0; sr < scaleMultiplier; sr++) {
+            let newRow = [];
+            for (let c = 0; c < baseMatrix[0].length; c++) {
+                for (let sc = 0; sc < scaleMultiplier; sc++) {
+                    newRow.push(baseMatrix[r][c]);
+                }
             }
-            newMatrix.push(row);
+            scaledMatrix.push(newRow);
         }
-        baseMatrix = newMatrix;
     }
-    const sizeR = baseMatrix.length, sizeC = baseMatrix[0].length;
-    currentZoom = (Math.max(sizeR, sizeC) <= 5) ? 0.85 : (Math.max(sizeR, sizeC) <= 8) ? 0.70 : 0.55;
+
+    const sizeR = scaledMatrix.length, sizeC = scaledMatrix[0].length;
+    currentZoom = (Math.max(sizeR, sizeC) <= 6) ? 0.85 : (Math.max(sizeR, sizeC) <= 10) ? 0.65 : 0.45;
     const startXPos = (1000 - (sizeC * 52)) / 2, startYPos = (1000 - (sizeR * 52)) / 2;
+    
     let shapeSlots = [];
-    for (let r = 0; r < sizeR; r++) for (let c = 0; c < sizeC; c++) if (baseMatrix[r][c] > 0) shapeSlots.push({ r, c, colorCode: baseMatrix[r][c] });
+    for (let r = 0; r < sizeR; r++) {
+        for (let c = 0; c < sizeC; c++) {
+            if (scaledMatrix[r][c] > 0) shapeSlots.push({ r, c, colorCode: scaledMatrix[r][c] });
+        }
+    }
+    
     let finalTiles = [], success = false;
     while (!success) {
         finalTiles = [];
         let vGrid = Array(sizeR).fill(null).map(() => Array(sizeC).fill(null));
         shapeSlots.forEach(s => vGrid[s.r][s.c] = true);
         let remaining = [...shapeSlots], failed = false;
+        
         while (remaining.length > 0) {
             let moves = [];
             for (let i = 0; i < remaining.length; i++) {
@@ -257,7 +257,10 @@ function generateLevelWithDifficulty(figureKey, level) {
                 dirSymbols.forEach(sym => {
                     const d = directions[sym];
                     let cr = slot.r + d.dy, cc = slot.c + d.dx, clear = true;
-                    while (cr >= 0 && cr < sizeR && cc >= 0 && cc < sizeC) { if (vGrid[cr][cc] !== null) { clear = false; break; } cr += d.dy; cc += d.dx; }
+                    while (cr >= 0 && cr < sizeR && cc >= 0 && cc < sizeC) { 
+                        if (vGrid[cr][cc] !== null) { clear = false; break; } 
+                        cr += d.dy; cc += d.dx; 
+                    }
                     if (clear) moves.push({ idx: i, slot, dir: sym });
                 });
             }
@@ -269,6 +272,7 @@ function generateLevelWithDifficulty(figureKey, level) {
         }
         if (!failed) success = true;
     }
+    
     finalTiles.forEach((tile) => {
         const tileEl = document.createElement('div');
         tileEl.className = `tile color-${tile.color}`;
@@ -339,8 +343,6 @@ function useBooster(type, actionCallback) {
     if (actionCallback()) { boosters[type]--; updateUI(); saveGameData(); }
 }
 
-// --- 4. СОБЫТИЯ И КЛИКИ ---
-
 hintBtn.addEventListener('click', () => useBooster('hint', () => {
     let validTile = tilesData.find(t => !t.removed && checkTileFree(t));
     if (validTile) { validTile.element.classList.add('hint-highlight'); return true; }
@@ -365,6 +367,29 @@ magnetBtn.addEventListener('click', () => useBooster('magnet', () => {
     return true;
 }));
 
+// --- ЛОГИКА РЕАЛЬНОЙ РЕКЛАМЫ ВК ---
+function showRewardedAd(onSuccess) {
+    if (typeof vkBridge !== 'undefined' && vkBridge.supports('VKWebAppShowNativeAds')) {
+        vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
+            .then((data) => {
+                if (data.result) {
+                    onSuccess(); // Пользователь досмотрел рекламу
+                } else {
+                    console.log("Реклама закрыта до вознаграждения");
+                }
+            })
+            .catch((error) => {
+                console.error("Ошибка рекламы:", error);
+                // Временно выдаем награду для теста, если реклама не загрузилась
+                // (перед релизом лучше заменить на alert("Реклама пока недоступна"))
+                onSuccess(); 
+            });
+    } else {
+        // Заглушка для тестирования просто в браузере (вне ВК)
+        setTimeout(onSuccess, 500);
+    }
+}
+
 buyBoosterBtn.addEventListener('click', () => {
     if (coins >= 500) { coins -= 500; boosters[activeShopBoosterType]++; updateUI(); saveGameData(); shopScreen.classList.add('hidden'); }
     else { shopScreen.classList.add('hidden'); errorScreen.classList.remove('hidden'); }
@@ -372,14 +397,28 @@ buyBoosterBtn.addEventListener('click', () => {
 
 adBoosterBtn.addEventListener('click', () => {
     adBoosterBtn.innerText = 'Загрузка...'; adBoosterBtn.disabled = true;
-    setTimeout(() => { boosters[activeShopBoosterType]++; updateUI(); saveGameData(); adBoosterBtn.innerText = 'Реклама (+1)'; adBoosterBtn.disabled = false; shopScreen.classList.add('hidden'); }, 2000);
+    showRewardedAd(() => {
+        boosters[activeShopBoosterType]++; 
+        updateUI(); 
+        saveGameData(); 
+        adBoosterBtn.innerText = 'Реклама (+1)'; 
+        adBoosterBtn.disabled = false; 
+        shopScreen.classList.add('hidden');
+    });
 });
 
 coinsWidget.addEventListener('click', () => walletScreen.classList.remove('hidden'));
 
 getAdCoinsBtn.addEventListener('click', () => {
     getAdCoinsBtn.innerText = 'Загрузка...'; getAdCoinsBtn.disabled = true;
-    setTimeout(() => { coins += 200; updateUI(); saveGameData(); getAdCoinsBtn.innerText = 'Получить +200 Ⓜ️'; getAdCoinsBtn.disabled = false; walletScreen.classList.add('hidden'); }, 2000);
+    showRewardedAd(() => {
+        coins += 200; 
+        updateUI(); 
+        saveGameData(); 
+        getAdCoinsBtn.innerText = 'Получить +200 Ⓜ️'; 
+        getAdCoinsBtn.disabled = false; 
+        walletScreen.classList.add('hidden');
+    });
 });
 
 closeShopBtn.addEventListener('click', () => shopScreen.classList.add('hidden'));
@@ -443,5 +482,3 @@ nextLevelBtn.addEventListener('click', () => { currentLevel++; saveGameData(); i
 restartBtn.addEventListener('click', () => { initGame(true); });
 zoomInBtn.addEventListener('click', () => { if(currentZoom < 1.6) { currentZoom += 0.15; updateUI(); } });
 zoomOutBtn.addEventListener('click', () => { if(currentZoom > 0.3) { currentZoom -= 0.15; updateUI(); } });
-
-// Лишний window.onload и закрывающая скобка "}" из конца файла успешно удалены!
