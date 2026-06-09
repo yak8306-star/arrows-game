@@ -1,30 +1,29 @@
-// Ждем загрузки всех ресурсов страницы
+// --- 1. БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ ---
 window.addEventListener('load', () => {
-    // Безопасная инициализация VK Bridge
     if (typeof vkBridge !== 'undefined') {
         vkBridge.send('VKWebAppInit')
-            .then(() => console.log("VK Bridge инициализирован"))
-            .catch(err => console.error("Ошибка VK Bridge:", err));
+            .then(() => {
+                console.log("VK Bridge инициализирован");
+                runGame(); // Запускаем игру после успеха
+            })
+            .catch(err => {
+                console.error("Ошибка VK Bridge:", err);
+                runGame(); // Запускаем даже при ошибке, чтобы игра работала
+            });
     } else {
         console.log("VK Bridge недоступен, запускаем в режиме браузера");
+        runGame();
     }
-
-    // Запускаем основной код игры
-    runGame();
 });
 
 function runGame() {
-    // ВСТАВЬТЕ СЮДА ВЕСЬ ВАШ ОСТАЛЬНОЙ КОД, 
-    // который начинался с 'const board = ...'
-    
-    // Например:
-    const board = document.getElementById('game-board');
-    // ... остальной ваш код ...
-    
-    // Не забудьте в конце вызвать функцию инициализации уровня
-    // initGame(false); 
+    // Эта функция вызывается только после того, как страница загружена
+    // и VK Bridge дал ответ.
+    loadGameData();
+    initGame(false);
 }
-  
+
+// --- 2. ЭЛЕМЕНТЫ И ПЕРЕМЕННЫЕ ---
 const board = document.getElementById('game-board');
 const boardWrapper = document.getElementById('game-board-wrapper');
 const livesDisplay = document.getElementById('lives-display');
@@ -97,6 +96,8 @@ const pixelArtTemplates = {
 };
 
 let figuresPool = [];
+
+// --- 3. ФУНКЦИИ И ЛОГИКА ИГРЫ ---
 
 function saveGameData() {
     localStorage.setItem('arrows_game_save', JSON.stringify({ level: currentLevel, coins: coins, boosters: boosters }));
@@ -338,6 +339,8 @@ function useBooster(type, actionCallback) {
     if (actionCallback()) { boosters[type]--; updateUI(); saveGameData(); }
 }
 
+// --- 4. СОБЫТИЯ И КЛИКИ ---
+
 hintBtn.addEventListener('click', () => useBooster('hint', () => {
     let validTile = tilesData.find(t => !t.removed && checkTileFree(t));
     if (validTile) { validTile.element.classList.add('hint-highlight'); return true; }
@@ -441,7 +444,4 @@ restartBtn.addEventListener('click', () => { initGame(true); });
 zoomInBtn.addEventListener('click', () => { if(currentZoom < 1.6) { currentZoom += 0.15; updateUI(); } });
 zoomOutBtn.addEventListener('click', () => { if(currentZoom > 0.3) { currentZoom -= 0.15; updateUI(); } });
 
-window.onload = () => { loadGameData(); initGame(false); };
-loadGameData();
-    initGame(false);
-}
+// Лишний window.onload и закрывающая скобка "}" из конца файла успешно удалены!
