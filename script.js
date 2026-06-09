@@ -1,8 +1,14 @@
 window.addEventListener('load', () => {
     if (typeof vkBridge !== 'undefined') {
         vkBridge.send('VKWebAppInit')
-            .then(() => { console.log("VK Bridge инициализирован"); runGame(); })
-            .catch(err => { console.error("Ошибка VK Bridge:", err); runGame(); });
+            .then(() => {
+                console.log("VK Bridge инициализирован");
+                runGame();
+            })
+            .catch(err => {
+                console.error("Ошибка VK Bridge:", err);
+                runGame();
+            });
     } else {
         console.log("VK Bridge недоступен, запускаем в режиме браузера");
         runGame();
@@ -24,6 +30,7 @@ const walletCoinsVal = document.getElementById('wallet-coins-val');
 
 const victoryScreen = document.getElementById('victory-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
+
 const shopScreen = document.getElementById('shop-screen');
 const walletScreen = document.getElementById('wallet-screen');
 const errorScreen = document.getElementById('error-screen');
@@ -76,103 +83,19 @@ const directions = {
 };
 const dirSymbols = ['▲', '▶', '▼', '◀'];
 
-// 100 УНИКАЛЬНЫХ ФИГУРОК
-const pixelArtTemplates = [
-    [[0,2,2,2,0],[2,2,5,2,0],[0,2,2,2,2],[2,2,2,2,2],[0,2,2,2,0],[0,1,0,1,0]], // Кошка
-    [[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1],[0,3,3,3,0],[0,3,2,3,0],[0,3,3,3,0]], // Собака
-    [[0,2,2,2,0],[2,5,2,5,2],[2,2,2,2,2],[2,1,1,1,2],[0,2,2,2,0]], // Заяц
-    [[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1],[1,1,5,1,1],[1,1,1,1,1]], // Птица
-    [[2,2,2],[2,5,2],[2,2,2],[2,1,2]], // Рыбка
-    [[0,2,0],[2,2,2],[2,5,2],[2,2,2]], // Медведь
-    [[1,1,1],[1,5,1],[1,1,1]], // Мышь
-    [[0,1,0],[1,1,1],[1,5,1],[1,1,1]], // Краб
-    [[1,1,1,1],[1,5,0,1],[1,1,1,1]], // Черепаха
-    [[0,2,0],[2,2,2],[2,2,2],[2,2,2]], // Лягушка
-    [[2,2,2,2],[2,1,1,2],[2,2,2,2]], // Овца
-    [[0,1,0],[1,1,1],[1,1,1]], // Цыпленок
-    [[1,1,1,1,1],[1,5,1,5,1],[1,1,1,1,1]], // Енот
-    [[0,0,1,0],[0,1,1,1],[1,1,1,1]], // Лиса
-    [[2,2,2],[2,2,2],[2,2,2]], // Кабан
-    [[1,1,1],[1,5,1],[1,1,1]], // Белка
-    [[0,2,0],[2,2,2],[2,2,2]], // Слон
-    [[2,2,2],[2,5,2],[2,2,2]], // Олень
-    [[1,1,1],[1,1,1]], // Волк
-    [[0,2,0],[2,2,2],[0,2,0]], // Еж
+const pixelArtTemplates = {
+    duck: [[0, 2, 2, 2, 0], [2, 2, 5, 2, 0], [0, 2, 2, 2, 2], [2, 2, 2, 2, 2], [0, 2, 2, 2, 0], [0, 1, 0, 1, 0]],
+    house: [[0, 0, 1, 0, 0], [0, 1, 1, 1, 0], [1, 1, 1, 1, 1], [0, 3, 3, 3, 0], [0, 3, 2, 3, 0], [0, 3, 3, 3, 0]],
+    heart: [[0, 1, 1, 0, 1, 1, 0], [1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1], [0, 1, 1, 1, 1, 1, 0], [0, 0, 1, 1, 1, 0, 0], [0, 0, 0, 1, 0, 0, 0]],
+    smiley: [[0, 2, 2, 2, 0], [2, 5, 2, 5, 2], [2, 2, 2, 2, 2], [2, 1, 1, 1, 2], [0, 2, 2, 2, 0]]
+};
 
-    // 21-50: Транспорт (Машины, самолеты, корабли)
-    [[0,2,2,2,0],[2,2,2,2,2],[2,1,1,1,2],[0,2,2,2,0]], // Легковая
-    [[2,2,2,2,2],[2,2,2,2,2],[0,2,2,2,0]], // Грузовик
-    [[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1]], // Корабль
-    [[0,1,1,0],[1,1,1,1],[1,1,1,1]], // Самолет
-    [[1,1,1],[1,0,1],[1,1,1]], // Велосипед
-    [[1,1,1,1],[1,1,1,1]], // Поезд
-    [[0,2,0],[2,2,2],[0,2,0]], // Ракета
-    [[1,1,1],[1,1,1]], // Автобус
-    [[0,2,0,0],[2,2,2,0],[2,2,2,2]], // Трактор
-    [[2,2,2],[2,5,2],[2,2,2]], // Вертолет
-    [[0,1,0],[1,1,1],[1,1,1]], // Трамвай
-    [[1,1,1,1],[1,1,1,1]], // Карета
-    [[2,2,2],[2,2,2],[2,2,2]], // Мотоцикл
-    [[0,1,0],[1,1,1],[1,0,1]], // Лодка
-    [[1,1,1],[1,0,0],[1,1,1]], // Подлодка
-    [[0,2,0],[2,2,2],[2,2,2]], // Шаттл
-    [[1,1,1],[1,0,1],[1,1,1]], // Сани
-    [[0,2,0,0],[2,2,2,0],[2,2,2,2]], // Прицеп
-    [[2,2,2],[2,2,2],[2,2,2]], // Лимузин
-    [[1,1,1],[1,1,1]], // Такси
-    [[0,2,0],[2,2,2],[2,2,2]], // Полиция
-    [[0,1,0],[1,1,1],[1,1,1]], // Скорая
-    [[1,1,1,1],[1,1,1,1]], // Пожарная
-    [[2,2,2],[2,2,2],[2,2,2]], // Экскаватор
-    [[0,1,0],[1,1,1],[1,0,1]], // Кран
-    [[1,1,1],[1,0,1],[1,1,1]], // Скейт
-    [[0,2,0],[2,2,2],[2,2,2]], // Мопед
-    [[1,1,1],[1,1,1]], // Катер
-    [[0,1,0,0],[1,1,1,0],[1,1,1,1]], // Паром
-    [[1,1,1,1],[1,1,1,1]], // Спорткар
+const levelSequence = ['duck', 'house', 'heart', 'smiley'];
 
-    // 51-80: Еда и предметы (Дома, фрукты, инструменты)
-    [[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1],[0,3,3,3,0],[0,3,2,3,0],[0,3,3,3,0]], // Дом
-    [[0,2,2,2,0],[2,2,5,2,0],[0,2,2,2,2],[2,2,2,2,2],[0,2,2,2,0],[0,1,0,1,0]], // Яблоко
-    [[0,1,1,1,0],[1,1,1,1,1],[1,1,1,1,1],[1,1,1,1,1],[0,1,1,1,0]], // Пицца
-    [[0,0,1,0,0],[0,1,1,1,0],[1,1,1,1,1]], // Арбуз
-    [[1,1,1],[1,5,1],[1,1,1]], // Вишня
-    [[0,2,0],[2,2,2],[2,2,2],[0,2,0]], // Мороженое
-    [[2,2,2],[2,2,2],[2,2,2]], // Шоколад
-    [[1,1,1],[1,1,1]], // Сэндвич
-    [[0,1,0],[1,1,1],[1,1,1]], // Ягода
-    [[1,1,1,1],[1,1,1,1]], // Ключ
-    [[0,2,0],[2,2,2],[2,2,2]], // Замок
-    [[0,1,0],[1,1,1],[0,1,0]], // Звезда
-    [[1,1,1],[1,0,0],[1,1,1]], // Лампа
-    [[0,2,2,0],[2,2,2,2],[2,2,2,2]], // Очки
-    [[1,1,1,1],[1,0,0,1],[1,1,1,1]], // Книга
-    [[0,1,0],[1,1,1],[1,0,1]], // Телефон
-    [[1,0,1],[1,1,1],[1,0,1]], // Часы
-    [[0,2,2,0],[2,2,2,2],[2,2,2,2]], // Гитара
-    [[1,1,1],[1,1,1],[1,1,1]], // Ноутбук
-    [[0,0,1,0],[0,1,1,1],[1,1,1,1]], // Меч
-    [[1,1,1],[1,0,1],[1,1,1]], // Щит
-    [[0,2,0],[2,2,2],[0,2,0]], // Корона
-    [[1,1,1,1],[1,0,0,1],[1,1,1,1]], // Кольцо
-    [[0,1,0],[1,1,1],[1,1,1]], // Шляпа
-    [[1,1,1],[1,1,1],[1,1,1]], // Сапог
-    [[0,2,2,0],[2,2,2,2],[2,2,2,2]], // Сумка
-    [[1,0,1],[1,1,1],[1,0,1]], // Зонт
-    [[0,1,0],[1,1,1],[1,1,1]], // Чайник
-    [[1,1,1],[1,1,1],[1,1,1]], // Стул
-    [[0,0,1,0],[0,1,1,1],[1,1,1,1]], // Стол
+function saveGameData() {
+    localStorage.setItem('arrows_game_save', JSON.stringify({ level: currentLevel, coins: coins, boosters: boosters }));
+}
 
-    // 81-100: Сложные формы и абстракции
-    [[1,1,1],[1,5,1],[1,1,1]], [[2,2,2],[2,5,2],[2,2,2]], [[1,1,1,1],[1,1,1,1]], [[0,2,0],[2,2,2],[0,2,0]],
-    [[1,1,1],[1,1,1],[1,1,1]], [[0,1,1,0],[1,1,1,1],[1,1,1,1]], [[1,1,1,1],[1,0,0,1],[1,1,1,1]], [[0,2,0],[2,2,2],[2,2,2]],
-    [[1,1,1],[1,1,1],[1,1,1]], [[0,1,0],[1,1,1],[1,1,1]], [[1,1,1,1],[1,1,1,1]], [[0,2,0],[2,2,2],[2,2,2]],
-    [[1,1,1],[1,1,1],[1,1,1]], [[0,1,0],[1,1,1],[1,1,1]], [[1,1,1,1],[1,1,1,1]], [[0,2,0],[2,2,2],[2,2,2]],
-    [[1,1,1],[1,1,1],[1,1,1]], [[0,1,0],[1,1,1],[1,1,1]], [[1,1,1,1],[1,1,1,1]], [[0,2,0],[2,2,2],[2,2,2]]
-    
-];
-
-function saveGameData() { localStorage.setItem('arrows_game_save', JSON.stringify({ level: currentLevel, coins: coins, boosters: boosters })); }
 function loadGameData() {
     const savedData = localStorage.getItem('arrows_game_save');
     if (savedData) {
@@ -184,15 +107,32 @@ function loadGameData() {
 }
 
 function initGame(isRestart = false) {
-    lives = 3; stopTimer(); stopHandAnimation();
-    timerVal.innerText = "00:00"; translateX = 0; translateY = 0;
-    evHistory = []; isDragging = false;
-    victoryScreen.classList.add('hidden'); gameOverScreen.classList.add('hidden');
-    shopScreen.classList.add('hidden'); walletScreen.classList.add('hidden'); errorScreen.classList.add('hidden');
+    lives = 3;
+    stopTimer();
+    stopHandAnimation();
+    timerVal.innerText = "00:00";
+    translateX = 0;
+    translateY = 0;
+    evHistory = [];
+    isDragging = false;
+    
+    victoryScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    shopScreen.classList.add('hidden');
+    walletScreen.classList.add('hidden');
+    errorScreen.classList.add('hidden');
     removeTutorialHand();
-    levelStartTime = Date.now(); startTimer();
-    if (currentLevel === 1) { tutorialActive = true; generateTutorialLevel(); }
-    else { tutorialActive = false; generateLevelClean(currentLevel); }
+    
+    levelStartTime = Date.now();
+    startTimer();
+
+    if (currentLevel === 1) {
+        tutorialActive = true;
+        generateTutorialLevel();
+    } else {
+        tutorialActive = false;
+        generateLevelClean(currentLevel);
+    }
     updateUI();
 }
 
@@ -212,14 +152,22 @@ function stopHandAnimation() { if (handInterval) clearInterval(handInterval); }
 function updateUI() {
     levelDisplay.innerText = currentLevel;
     livesDisplay.innerText = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
-    coinsDisplay.innerText = coins; walletCoinsVal.innerText = coins; 
-    hintCountVal.innerText = boosters.hint; bombCountVal.innerText = boosters.bomb; magnetCountVal.innerText = boosters.magnet;
+    coinsDisplay.innerText = coins;
+    walletCoinsVal.innerText = coins; 
+    hintCountVal.innerText = boosters.hint;
+    bombCountVal.innerText = boosters.bomb;
+    magnetCountVal.innerText = boosters.magnet;
     board.style.transform = `translate(${translateX}px, ${translateY}px) scale(${currentZoom})`;
 }
 
 function generateTutorialLevel() {
-    board.innerHTML = ''; tilesData = []; currentZoom = 0.9; translateX = 0; translateY = 0;
-    const startXPos = (1000 - (3 * 52)) / 2; const startYPos = (1000 - (2 * 52)) / 2;
+    board.innerHTML = '';
+    tilesData = [];
+    currentZoom = 0.9;
+    translateX = 0;
+    translateY = 0;
+    const startXPos = (1000 - (3 * 52)) / 2;
+    const startYPos = (1000 - (2 * 52)) / 2;
     const layout = [
         { r: 0, c: 0, dir: '◀', target: true, color: 1 }, { r: 0, c: 1, dir: '▲', color: 2 },
         { r: 0, c: 2, dir: '▶', color: 3 }, { r: 1, c: 0, dir: '▼', color: 4 },
@@ -241,53 +189,64 @@ function generateTutorialLevel() {
 function createTutorialHand() {
     const target = tilesData.find(t => t.isTarget);
     if (!target) return;
-    const hand = document.createElement('div'); hand.id = 'tutorial-hand'; hand.innerHTML = '☝️';
-    hand.style.position = 'absolute'; hand.style.fontSize = '32px';
+    const hand = document.createElement('div');
+    hand.id = 'tutorial-hand';
+    hand.innerHTML = '☝️';
+    hand.style.position = 'absolute';
+    hand.style.fontSize = '32px';
     hand.style.left = `${parseFloat(target.element.style.left) + 12}px`;
     hand.style.top = `${parseFloat(target.element.style.top) + 42}px`;
     let up = false;
-    handInterval = setInterval(() => { hand.style.transform = up ? 'translateY(-10px)' : 'translateY(0px)'; up = !up; }, 400);
+    handInterval = setInterval(() => {
+        hand.style.transform = up ? 'translateY(-10px)' : 'translateY(0px)';
+        up = !up;
+    }, 400);
     board.appendChild(hand);
 }
 
 function removeTutorialHand() { stopHandAnimation(); const hand = document.getElementById('tutorial-hand'); if (hand) hand.remove(); }
 
 function generateLevelClean(level) {
-    board.innerHTML = ''; tilesData = []; translateX = 0; translateY = 0;
+    board.innerHTML = '';
+    tilesData = [];
+    translateX = 0; 
+    translateY = 0;
     
-    // Выбор фигуры: 1-100 по порядку, 101+ рандом
-    let baseMatrix;
-    if (level <= 100) {
-        baseMatrix = pixelArtTemplates[level - 1];
-    } else {
-        let prevIdx = parseInt(localStorage.getItem('last_shape_idx'));
-        let newIdx;
-        do { newIdx = Math.floor(Math.random() * pixelArtTemplates.length); } while (newIdx === prevIdx);
-        baseMatrix = pixelArtTemplates[newIdx];
-        localStorage.setItem('last_shape_idx', newIdx);
-    }
+    let shapeIndex = (level - 2) % levelSequence.length;
+    let figureKey = levelSequence[shapeIndex];
+    let baseMatrix = pixelArtTemplates[figureKey];
     
-    // Рост сложности (размера)
-    let scaleMultiplier = Math.floor((level - 1) / 4) + 1;
+    let scaleMultiplier = Math.floor((level - 2) / levelSequence.length) + 1;
     let scaledMatrix = [];
+
     for (let r = 0; r < baseMatrix.length; r++) {
         for (let sr = 0; sr < scaleMultiplier; sr++) {
             let newRow = [];
             for (let c = 0; c < baseMatrix[0].length; c++) {
-                for (let sc = 0; sc < scaleMultiplier; sc++) { newRow.push(baseMatrix[r][c]); }
+                for (let sc = 0; sc < scaleMultiplier; sc++) {
+                    newRow.push(baseMatrix[r][c]);
+                }
             }
             scaledMatrix.push(newRow);
         }
     }
 
     const sizeR = scaledMatrix.length, sizeC = scaledMatrix[0].length;
-    const shapeWidth = sizeC * 52, shapeHeight = sizeR * 52;
+    
+    // АВТО-МАСШТАБИРОВАНИЕ (АВТОЗУМ)
+    const shapeWidth = sizeC * 52;
+    const shapeHeight = sizeR * 52;
     const wrapperW = boardWrapper.clientWidth || window.innerWidth;
     const wrapperH = boardWrapper.clientHeight || window.innerHeight;
+    
+    // Считаем коэффициент, чтобы фигура точно влезла в экран с отступами
     const fitZoom = Math.min((wrapperW - 40) / shapeWidth, (wrapperH - 120) / shapeHeight);
+    
+    // Ограничиваем: зум не меньше 0.2 (чтобы не было точек) и не больше 1.1
     currentZoom = Math.max(0.2, Math.min(fitZoom, 1.1));
 
     const startXPos = (1000 - shapeWidth) / 2, startYPos = (1000 - shapeHeight) / 2;
+    
     let shapeSlots = [];
     for (let r = 0; r < sizeR; r++) {
         for (let c = 0; c < sizeC; c++) {
@@ -301,6 +260,7 @@ function generateLevelClean(level) {
         let vGrid = Array(sizeR).fill(null).map(() => Array(sizeC).fill(null));
         shapeSlots.forEach(s => vGrid[s.r][s.c] = true);
         let remaining = [...shapeSlots], failed = false;
+        
         while (remaining.length > 0) {
             let moves = [];
             for (let i = 0; i < remaining.length; i++) {
@@ -338,10 +298,12 @@ function generateLevelClean(level) {
 function handleTileClick(tile) {
     if (tile.removed || lives <= 0) return;
     document.querySelectorAll('.tile').forEach(el => el.classList.remove('hint-highlight'));
-    if (checkTileFree(tile)) { flyOutTile(tile); } 
-    else {
+    if (checkTileFree(tile)) {
+        flyOutTile(tile);
+    } else {
         if (tutorialActive) return;
-        lives--; updateUI();
+        lives--;
+        updateUI();
         tile.element.style.transform = 'scale(0.85)';
         setTimeout(() => { if(!tile.removed) tile.element.style.transform = 'scale(1)'; }, 130);
         if (lives <= 0) { stopTimer(); gameOverScreen.classList.remove('hidden'); }
@@ -373,7 +335,10 @@ function flyOutTile(tile) {
     if (tutorialActive && tile.isTarget) { removeTutorialHand(); tutorialActive = false; }
     setTimeout(() => {
         tile.element.remove();
-        if (tilesData.every(t => t.removed)) { stopTimer(); coins += 25; saveGameData(); victoryScreen.classList.remove('hidden'); }
+        if (tilesData.every(t => t.removed)) {
+            stopTimer(); coins += 25; saveGameData();
+            victoryScreen.classList.remove('hidden');
+        }
     }, 400); 
 }
 
@@ -383,7 +348,8 @@ function useBooster(type, actionCallback) {
         activeShopBoosterType = type;
         let names = { hint: '💡 Подсказка', bomb: '💣 Бомба', magnet: '🧲 Магнит' };
         shopTitle.innerText = names[type];
-        shopScreen.classList.remove('hidden'); return;
+        shopScreen.classList.remove('hidden');
+        return;
     }
     if (actionCallback()) { boosters[type]--; updateUI(); saveGameData(); }
 }
@@ -415,9 +381,20 @@ magnetBtn.addEventListener('click', () => useBooster('magnet', () => {
 function showRewardedAd(onSuccess) {
     if (typeof vkBridge !== 'undefined' && vkBridge.supports('VKWebAppShowNativeAds')) {
         vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
-            .then((data) => { if (data.result) onSuccess(); else console.log("Реклама закрыта"); })
-            .catch((error) => { console.error("Ошибка рекламы:", error); onSuccess(); });
-    } else { setTimeout(onSuccess, 500); }
+            .then((data) => {
+                if (data.result) {
+                    onSuccess(); 
+                } else {
+                    console.log("Реклама закрыта до вознаграждения");
+                }
+            })
+            .catch((error) => {
+                console.error("Ошибка рекламы:", error);
+                onSuccess(); 
+            });
+    } else {
+        setTimeout(onSuccess, 500);
+    }
 }
 
 buyBoosterBtn.addEventListener('click', () => {
@@ -427,22 +404,45 @@ buyBoosterBtn.addEventListener('click', () => {
 
 adBoosterBtn.addEventListener('click', () => {
     adBoosterBtn.innerText = 'Загрузка...'; adBoosterBtn.disabled = true;
-    showRewardedAd(() => { boosters[activeShopBoosterType]++; updateUI(); saveGameData(); adBoosterBtn.innerText = 'Реклама (+1)'; adBoosterBtn.disabled = false; shopScreen.classList.add('hidden'); });
+    showRewardedAd(() => {
+        boosters[activeShopBoosterType]++; 
+        updateUI(); 
+        saveGameData(); 
+        adBoosterBtn.innerText = 'Реклама (+1)'; 
+        adBoosterBtn.disabled = false; 
+        shopScreen.classList.add('hidden');
+    });
 });
 
 coinsWidget.addEventListener('click', () => walletScreen.classList.remove('hidden'));
+
 getAdCoinsBtn.addEventListener('click', () => {
     getAdCoinsBtn.innerText = 'Загрузка...'; getAdCoinsBtn.disabled = true;
-    showRewardedAd(() => { coins += 200; updateUI(); saveGameData(); getAdCoinsBtn.innerText = 'Получить +200 Ⓜ️'; getAdCoinsBtn.disabled = false; walletScreen.classList.remove('hidden'); });
+    showRewardedAd(() => {
+        coins += 200; 
+        updateUI(); 
+        saveGameData(); 
+        getAdCoinsBtn.innerText = 'Получить +200 Ⓜ️'; 
+        getAdCoinsBtn.disabled = false; 
+        walletScreen.classList.add('hidden');
+    });
 });
 
 closeShopBtn.addEventListener('click', () => shopScreen.classList.add('hidden'));
-closeWalletBtn.addEventListener('click', () => walletScreen.classList.remove('hidden'));
+closeWalletBtn.addEventListener('click', () => walletScreen.classList.add('hidden'));
 closeErrorBtn.addEventListener('click', () => errorScreen.classList.add('hidden'));
+
+let evHistory = []; 
+let prevDiff = -1;
+let movedMinimal = false;
 
 boardWrapper.addEventListener('pointerdown', (e) => {
     evHistory.push(e);
-    if (evHistory.length === 1) { startX = e.clientX - translateX; startY = e.clientY - translateY; movedMinimal = false; }
+    if (evHistory.length === 1) {
+        startX = e.clientX - translateX;
+        startY = e.clientY - translateY;
+        movedMinimal = false;
+    }
 });
 
 boardWrapper.addEventListener('pointermove', (e) => {
@@ -457,19 +457,32 @@ boardWrapper.addEventListener('pointermove', (e) => {
         }
         prevDiff = curDiff;
     } else if (evHistory.length === 1) {
-        let newX = e.clientX - startX; let newY = e.clientY - startY;
+        let newX = e.clientX - startX;
+        let newY = e.clientY - startY;
+        
+        // --- ЖЕСТКИЕ ЛИМИТЫ ДЛЯ ПЕРЕТАСКИВАНИЯ ---
+        // Рассчитываем допустимую зону (половина ширины и высоты экрана)
         const limitX = (boardWrapper.clientWidth || window.innerWidth) / 1.5;
         const limitY = (boardWrapper.clientHeight || window.innerHeight) / 1.5;
+
         if (Math.abs(newX - translateX) > 5 || Math.abs(newY - translateY) > 5) {
-            isDragging = true; movedMinimal = true;
+            isDragging = true;
+            movedMinimal = true;
+            
+            // Math.max и Math.min не дают координатам уйти за пределы limitX и limitY
             translateX = Math.max(-limitX, Math.min(limitX, newX));
             translateY = Math.max(-limitY, Math.min(limitY, newY));
+            
             updateUI();
         }
     }
 });
 
-function stopTracking(e) { evHistory = evHistory.filter(ev => ev.pointerId !== e.pointerId); if (evHistory.length < 2) prevDiff = -1; isDragging = false; }
+function stopTracking(e) { 
+    evHistory = evHistory.filter(ev => ev.pointerId !== e.pointerId); 
+    if (evHistory.length < 2) prevDiff = -1; 
+    isDragging = false;
+}
 boardWrapper.addEventListener('pointerup', stopTracking);
 boardWrapper.addEventListener('pointercancel', stopTracking);
 
