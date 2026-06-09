@@ -90,7 +90,6 @@ const pixelArtTemplates = {
     smiley: [[0, 2, 2, 2, 0], [2, 5, 2, 5, 2], [2, 2, 2, 2, 2], [2, 1, 1, 1, 2], [0, 2, 2, 2, 0]]
 };
 
-// Жесткая привязка фигур к порядку уровней (после туториала)
 const levelSequence = ['duck', 'house', 'heart', 'smiley'];
 
 function saveGameData() {
@@ -165,6 +164,8 @@ function generateTutorialLevel() {
     board.innerHTML = '';
     tilesData = [];
     currentZoom = 0.9;
+    translateX = 0;
+    translateY = 0;
     const startXPos = (1000 - (3 * 52)) / 2;
     const startYPos = (1000 - (2 * 52)) / 2;
     const layout = [
@@ -205,21 +206,19 @@ function createTutorialHand() {
 
 function removeTutorialHand() { stopHandAnimation(); const hand = document.getElementById('tutorial-hand'); if (hand) hand.remove(); }
 
-// НОВАЯ ГЕНЕРАЦИЯ БЕЗ РАНДОМНОГО МУСОРА
 function generateLevelClean(level) {
     board.innerHTML = '';
     tilesData = [];
+    translateX = 0; 
+    translateY = 0;
     
-    // Определяем фигуру по уровню (уровень 2 = индекс 0, и т.д.)
     let shapeIndex = (level - 2) % levelSequence.length;
     let figureKey = levelSequence[shapeIndex];
     let baseMatrix = pixelArtTemplates[figureKey];
     
-    // Определяем множитель размера (каждые 4 уровня фигура увеличивается)
     let scaleMultiplier = Math.floor((level - 2) / levelSequence.length) + 1;
     let scaledMatrix = [];
 
-    // Масштабируем матрицу, чтобы форма сохранилась, но стрелочек стало больше
     for (let r = 0; r < baseMatrix.length; r++) {
         for (let sr = 0; sr < scaleMultiplier; sr++) {
             let newRow = [];
@@ -233,8 +232,20 @@ function generateLevelClean(level) {
     }
 
     const sizeR = scaledMatrix.length, sizeC = scaledMatrix[0].length;
-    currentZoom = (Math.max(sizeR, sizeC) <= 6) ? 0.85 : (Math.max(sizeR, sizeC) <= 10) ? 0.65 : 0.45;
-    const startXPos = (1000 - (sizeC * 52)) / 2, startYPos = (1000 - (sizeR * 52)) / 2;
+    
+    // АВТО-МАСШТАБИРОВАНИЕ (АВТОЗУМ)
+    const shapeWidth = sizeC * 52;
+    const shapeHeight = sizeR * 52;
+    const wrapperW = boardWrapper.clientWidth || window.innerWidth;
+    const wrapperH = boardWrapper.clientHeight || window.innerHeight;
+    
+    // Считаем коэффициент, чтобы фигура точно влезла в экран с отступами
+    const fitZoom = Math.min((wrapperW - 40) / shapeWidth, (wrapperH - 120) / shapeHeight);
+    
+    // Ограничиваем: зум не меньше 0.2 (чтобы не было точек) и не больше 1.1
+    currentZoom = Math.max(0.2, Math.min(fitZoom, 1.1));
+
+    const startXPos = (1000 - shapeWidth) / 2, startYPos = (1000 - shapeHeight) / 2;
     
     let shapeSlots = [];
     for (let r = 0; r < sizeR; r++) {
@@ -367,25 +378,21 @@ magnetBtn.addEventListener('click', () => useBooster('magnet', () => {
     return true;
 }));
 
-// --- ЛОГИКА РЕАЛЬНОЙ РЕКЛАМЫ ВК ---
 function showRewardedAd(onSuccess) {
     if (typeof vkBridge !== 'undefined' && vkBridge.supports('VKWebAppShowNativeAds')) {
         vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
             .then((data) => {
                 if (data.result) {
-                    onSuccess(); // Пользователь досмотрел рекламу
+                    onSuccess(); 
                 } else {
                     console.log("Реклама закрыта до вознаграждения");
                 }
             })
             .catch((error) => {
                 console.error("Ошибка рекламы:", error);
-                // Временно выдаем награду для теста, если реклама не загрузилась
-                // (перед релизом лучше заменить на alert("Реклама пока недоступна"))
                 onSuccess(); 
             });
     } else {
-        // Заглушка для тестирования просто в браузере (вне ВК)
         setTimeout(onSuccess, 500);
     }
 }
@@ -445,18 +452,27 @@ boardWrapper.addEventListener('pointermove', (e) => {
         let curDiff = Math.hypot(evHistory[0].clientX - evHistory[1].clientX, evHistory[0].clientY - evHistory[1].clientY);
         if (prevDiff > 0) {
             if (curDiff > prevDiff && currentZoom < 1.6) currentZoom += 0.03;
-            else if (curDiff < prevDiff && currentZoom > 0.3) currentZoom -= 0.03;
+            else if (curDiff < prevDiff && currentZoom > 0.2) currentZoom -= 0.03;
             updateUI();
         }
         prevDiff = curDiff;
     } else if (evHistory.length === 1) {
         let newX = e.clientX - startX;
         let newY = e.clientY - startY;
+        
+        // --- ЖЕСТКИЕ ЛИМИТЫ ДЛЯ ПЕРЕТАСКИВАНИЯ ---
+        // Рассчитываем допустимую зону (половина ширины и высоты экрана)
+        const limitX = (boardWrapper.clientWidth || window.innerWidth) / 1.5;
+        const limitY = (boardWrapper.clientHeight || window.innerHeight) / 1.5;
+
         if (Math.abs(newX - translateX) > 5 || Math.abs(newY - translateY) > 5) {
             isDragging = true;
             movedMinimal = true;
-            translateX = newX;
-            translateY = newY;
+            
+            // Math.max и Math.min не дают координатам уйти за пределы limitX и limitY
+            translateX = Math.max(-limitX, Math.min(limitX, newX));
+            translateY = Math.max(-limitY, Math.min(limitY, newY));
+            
             updateUI();
         }
     }
@@ -481,4 +497,4 @@ board.addEventListener('click', (e) => {
 nextLevelBtn.addEventListener('click', () => { currentLevel++; saveGameData(); initGame(false); });
 restartBtn.addEventListener('click', () => { initGame(true); });
 zoomInBtn.addEventListener('click', () => { if(currentZoom < 1.6) { currentZoom += 0.15; updateUI(); } });
-zoomOutBtn.addEventListener('click', () => { if(currentZoom > 0.3) { currentZoom -= 0.15; updateUI(); } });
+zoomOutBtn.addEventListener('click', () => { if(currentZoom > 0.2) { currentZoom -= 0.15; updateUI(); } });
